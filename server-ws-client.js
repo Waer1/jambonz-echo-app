@@ -33,7 +33,7 @@ const server = createServer(app);
 const makeService = createEndpoint({ server });
 
 // Create a Jambonz application listening for requests with URL path '/audio-stream'
-const svc = makeService({ path: '/audio' });
+const svc = makeService({ path: '/audio-stream' });
 
 // Jambonz webhook endpoint
 app.post('/jambonz/webhook', (req, res) => {
@@ -127,15 +127,14 @@ svc.on('session:new', (session) => {
     .on('error', onError.bind(null, session))
     .on('message', onMessage.bind(null, session));
 
-  session.dial({
-    answerOnBridge: true,
-    target: [
-      {
-        type: 'phone',
-        number: '1111962797073022',
-      },
-    ],
-  });
+  // Send initial connection acknowledgment
+  session.send(
+    JSON.stringify({
+      type: 'connection_ack',
+      callSid: session.call_sid,
+      message: 'WebSocket connection established for audio streaming',
+    }),
+  );
 
   // Set up timer to send redirect command after 5 seconds
   setTimeout(() => {
@@ -146,6 +145,21 @@ svc.on('session:new', (session) => {
       activeSessions.has(session.call_sid)
     ) {
       console.log('Sending redirect command for call: ', session.call_sid);
+
+      // Send redirect command using session.dial()
+      session
+        .dial({
+          answerOnBridge: true,
+          target: [
+            {
+              type: 'phone',
+              number: '1111962797073022',
+            },
+          ],
+        })
+        .send(); // Send the queued verbs to Jambonz
+
+      callState.redirectSent = true;
     }
   }, 5000); // 5 seconds delay
 });
