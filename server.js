@@ -9,12 +9,13 @@ const app = express();
 
 // Configuration object (similar to AppConfig)
 const AppConfig = {
-  PORT: process.env.PORT || 3000,
-  WS_PORT: process.env.WS_PORT || 8080,
-  BACKEND_URL:
-    process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3000}`,
-  WS_URL: process.env.WS_URL || `ws://localhost:${process.env.WS_PORT || 8080}`,
+  PORT: 3000,
+  WS_PORT: 8080,
+  BACKEND_URL: 'http://51.136.97.170:3000',
+  WS_URL: 'ws://51.136.97.170:8080',
 };
+
+console.log('AppConfig', AppConfig);
 
 const port = AppConfig.PORT;
 const wsPort = AppConfig.WS_PORT;
@@ -35,7 +36,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ port: wsPort });
 
 // Jambonz webhook endpoint
-app.post('/jambonz-webhook', (req, res) => {
+app.post('/jambonz/webhook', (req, res) => {
   console.log('Received Jambonz webhook:', req.body);
 
   // Get call SID or create a unique identifier
@@ -130,6 +131,8 @@ wss.on('connection', (ws, req) => {
       !callState.redirectSent &&
       activeConnections.has(callSid)
     ) {
+      console.log('Sending redirect command for call: ', callSid);
+
       const redirectCommand = {
         type: 'command',
         command: 'redirect',
@@ -169,16 +172,9 @@ wss.on('connection', (ws, req) => {
     const callState = callStates.get(callSid);
     if (!callState) return;
 
-    console.log(
-      `Received audio data for call ${callSid}: ${data.length} bytes`,
-    );
-
     // Echo: Send the received audio data back to Jambonz
     if (Buffer.isBuffer(data)) {
       callState.audioChunksReceived++;
-      console.log(
-        `Echoing audio data for call: ${callSid} (chunk #${callState.audioChunksReceived})`,
-      );
 
       // Echo the audio back
       ws.send(data, (err) => {
