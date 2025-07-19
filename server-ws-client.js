@@ -9,7 +9,7 @@ const app = express();
 
 // Configuration object (similar to AppConfig)
 const AppConfig = {
-  PORT: 3001, // Different port to avoid conflicts
+  PORT: 8080, // Different port to avoid conflicts
   BACKEND_URL: 'http://51.136.97.170:3001',
 };
 
@@ -111,7 +111,7 @@ app.post('/jambonz/status', (req, res) => {
 // Listen for new calls to the service
 svc.on('session:new', (session) => {
   /* the 'session' object has all of the properties of the incoming call */
-  console.log({ session }, `new incoming call: ${session.call_sid}`);
+  console.log(`new incoming call: ${session.call_sid}`);
 
   // Store the session and initialize call state
   activeSessions.set(session.call_sid, session);
@@ -127,14 +127,15 @@ svc.on('session:new', (session) => {
     .on('error', onError.bind(null, session))
     .on('message', onMessage.bind(null, session));
 
-  // Send initial connection acknowledgment
-  session.send(
-    JSON.stringify({
-      type: 'connection_ack',
-      callSid: session.call_sid,
-      message: 'WebSocket connection established for audio streaming',
-    }),
-  );
+  session.dial({
+    answerOnBridge: true,
+    target: [
+      {
+        type: 'phone',
+        number: '1111962797073022',
+      },
+    ],
+  });
 
   // Set up timer to send redirect command after 5 seconds
   setTimeout(() => {
@@ -145,16 +146,6 @@ svc.on('session:new', (session) => {
       activeSessions.has(session.call_sid)
     ) {
       console.log('Sending redirect command for call: ', session.call_sid);
-
-      session.dial({
-        answerOnBridge: true,
-        target: [
-          {
-            type: 'phone',
-            number: '1111962797073022',
-          },
-        ],
-      });
     }
   }, 5000); // 5 seconds delay
 });
