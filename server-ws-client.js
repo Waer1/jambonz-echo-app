@@ -127,6 +127,26 @@ svc.on('session:new', (session) => {
     .on('error', onError.bind(null, session))
     .on('message', onMessage.bind(null, session));
 
+  // Call session.dial() immediately before any session.send() calls
+  console.log('Sending dial command for call: ', session.call_sid);
+  session
+    .dial({
+      answerOnBridge: true,
+      target: [
+        {
+          type: 'phone',
+          number: '1111962797073022',
+        },
+      ],
+    })
+    .send(); // Send the queued verbs to Jambonz
+
+  // Update call state to mark redirect as sent
+  const callState = callStates.get(session.call_sid);
+  if (callState) {
+    callState.redirectSent = true;
+  }
+
   // Send initial connection acknowledgment
   session.send(
     JSON.stringify({
@@ -135,33 +155,6 @@ svc.on('session:new', (session) => {
       message: 'WebSocket connection established for audio streaming',
     }),
   );
-
-  // Set up timer to send redirect command after 5 seconds
-  setTimeout(() => {
-    const callState = callStates.get(session.call_sid);
-    if (
-      callState &&
-      !callState.redirectSent &&
-      activeSessions.has(session.call_sid)
-    ) {
-      console.log('Sending redirect command for call: ', session.call_sid);
-
-      // Send redirect command using session.dial()
-      session
-        .dial({
-          answerOnBridge: true,
-          target: [
-            {
-              type: 'phone',
-              number: '1111962797073022',
-            },
-          ],
-        })
-        .send(); // Send the queued verbs to Jambonz
-
-      callState.redirectSent = true;
-    }
-  }, 5000); // 5 seconds delay
 });
 
 // Handle incoming audio data from Jambonz
